@@ -21,7 +21,7 @@ android {
         // (https://github.com/beeware/rubicon-java/issues/74).
         minSdkVersion 26
         // This should generally match the compileSDKVersion from above.
-        targetSdkVersion 34
+        targetSdkVersion 35
 
         python {
             version "3.11"
@@ -40,14 +40,14 @@ android {
     }
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(1_7) // replace with your desired Java version
+            languageVersion = JavaLanguageVersion.of(2_1) // replace with your desired Java version
 
         }
     }
 
     compileOptions {
-      sourceCompatibility JavaVersion.VERSION_1_7
-      targetCompatibility JavaVersion.VERSION_1_7
+      sourceCompatibility JavaVersion.VERSION_21
+      targetCompatibility JavaVersion.VERSION_21
     }
 
     buildTypes {
@@ -70,18 +70,31 @@ android {
 
 chaquopy {
     defaultConfig {
-        def os = System.getProperty("os.name").toLowerCase()
-        if (os.contains("win")) {
-            buildPython("C:/Program Files/Python311/python.exe")
-        } else if (os.contains("nix") || os.contains("nux") || os.contains("mac")) {
+        def osName = System.getProperty("os.name").toLowerCase()
+        if (osName.contains("win")) {
+            def winPythonPath = "C:/Program Files/Python311/python.exe"
+            def winPythonArmPath = "C:/Program Files/Python311-arm64/python.exe"
+            def pythonFile = new File(winPythonPath)
+
+            if (pythonFile.exists()) {
+                println "Found standard Windows Python at: ${winPythonPath}"
+                buildPython(winPythonPath)
+            } else {
+                println "Standard Windows Python not found. Falling back to ARM path: ${winPythonArmPath}"
+                buildPython(winPythonArmPath)
+            }
+        } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("mac")) {
             buildPython("/usr/bin/python3")
         }
+
         version = "3.11"
         pyc {
             src = false
         }
     }
 }
+
+
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])

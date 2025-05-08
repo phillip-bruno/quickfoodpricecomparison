@@ -33,3 +33,12 @@ app/libs/*/libcrypto.so
 app/libs/*/liblzma.so
 app/src/main/assets/stdlib/pythonhome.*.zip
 *.zip
+/.idea/AndroidProjectSystem.xml
+/app/release/app-release.apk
+/app/release/baselineProfiles/0/app-release.dm
+/app/release/baselineProfiles/1/app-release.dm
+/.idea/codeStyles/codeStyleConfig.xml
+/.idea/deploymentTargetSelector.xml
+/app/release/output-metadata.json
+/.idea/codeStyles/Project.xml
+/.idea/runConfigurations.xml
