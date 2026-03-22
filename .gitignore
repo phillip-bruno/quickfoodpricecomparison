@@ -14,7 +14,10 @@
 .externalNativeBuild
 .cxx
 # Python bytecode
-.pyc
+*.pyc
+__pycache__/
+# Virtual environments
+.venv/
 # Build products
 /build
 app/build
