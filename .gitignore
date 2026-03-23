@@ -18,6 +18,10 @@
 __pycache__/
 # Virtual environments
 .venv/
+# Signing
+*.jks
+*.keystore
+
 # Build products
 /build
 app/build
