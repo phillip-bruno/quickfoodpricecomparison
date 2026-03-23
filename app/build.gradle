@@ -55,6 +55,7 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
 
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20231013'
     androidTestImplementation composeBom
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
     debugImplementation 'androidx.compose.ui:ui-tooling'
