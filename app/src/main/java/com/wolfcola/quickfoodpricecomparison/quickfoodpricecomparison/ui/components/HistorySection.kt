@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.HistoryEntry
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.ui.theme.EmptyStateColor
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.ui.theme.LocalExtendedColors
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel.MainViewModel
 
 @Composable
@@ -35,7 +35,7 @@ fun HistorySection(viewModel: MainViewModel) {
             Text(
                 "No conversions yet. Press Convert to get started.",
                 fontStyle = FontStyle.Italic,
-                color = EmptyStateColor,
+                color = LocalExtendedColors.current.emptyState,
                 modifier = Modifier.padding(10.dp)
             )
         } else {

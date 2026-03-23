@@ -30,8 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.ALL_CATEGORIES_LABEL
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.SELECTION_LIST
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.ui.theme.FoodInfoColor
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.ui.theme.InputBackground
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.ui.theme.LocalExtendedColors
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,7 +48,7 @@ fun InputSection(viewModel: MainViewModel) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(InputBackground)
+            .background(LocalExtendedColors.current.inputBackground)
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -110,7 +109,7 @@ fun InputSection(viewModel: MainViewModel) {
                 text = foodInfo,
                 fontSize = 12.sp,
                 fontStyle = FontStyle.Italic,
-                color = FoodInfoColor
+                color = LocalExtendedColors.current.foodInfo
             )
         }
 
