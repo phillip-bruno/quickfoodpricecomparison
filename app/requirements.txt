@@ -1,8 +1,0 @@
-appdirs==1.4.4
-flexcache==0.3
-flexparser==0.3.1
-pint==0.23
-toga-android==0.4.5
-toga-core==0.4.5
-travertino==0.3.0
-typing-extensions==4.12.2

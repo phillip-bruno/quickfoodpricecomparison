@@ -1,53 +1,33 @@
-apply plugin: 'com.android.application'
-apply plugin: 'com.chaquo.python'
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
 
 android {
-    // Android 14 == SDK Level 34. This number should generally be kept up to date with
-    // the most recent supported Android release.
-    defaultConfig {
-        compileSdk 34
-    }
-
     namespace "com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison"
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison"
+        minSdk 26
+        targetSdk 35
         versionCode 10
-        versionName '1.1.15'
+        versionName "1.1.15"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        // Briefcase currently requires API Level 24 for the `pidof` command, and the `--pid`
-        // argument to `adb logcat`. This supports over 90% of active devices
-        // (https://github.com/beeware/rubicon-java/issues/74).
-        minSdkVersion 26
-        // This should generally match the compileSDKVersion from above.
-        targetSdkVersion 35
-
-        python {
-            version "3.11"
-            pip {
-                install "-r", "requirements.txt"
-            }
-            extractPackages "tests"
-        }
-        ndk {
-            
-            // Chaquopy also supports x86, but it's not very useful anymore, so we'll
-            // disable it to speed up the build.
-            abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
-            
-        }
     }
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(2_1) // replace with your desired Java version
 
-        }
+    buildFeatures {
+        compose true
     }
 
     compileOptions {
-      sourceCompatibility JavaVersion.VERSION_21
-      targetCompatibility JavaVersion.VERSION_21
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    kotlinOptions {
+        jvmTarget = "21"
     }
 
     buildTypes {
@@ -57,51 +37,25 @@ android {
             signingConfig signingConfigs.debug
         }
     }
-    sourceSets {
-        main {
-            python.srcDirs = [
-                "src/main/python",  // App code
-                "src/main/python-briefcase",  // Template code
-                "src/main/python/quickfoodpricecomparison/resources"
-            ]
-        }
-    }
 }
-
-chaquopy {
-    defaultConfig {
-        def osName = System.getProperty("os.name").toLowerCase()
-        if (osName.contains("win")) {
-            def winPythonPath = "C:/Program Files/Python311/python.exe"
-            def winPythonArmPath = "C:/Program Files/Python311-arm64/python.exe"
-            def pythonFile = new File(winPythonPath)
-
-            if (pythonFile.exists()) {
-                println "Found standard Windows Python at: ${winPythonPath}"
-                buildPython(winPythonPath)
-            } else {
-                println "Standard Windows Python not found. Falling back to ARM path: ${winPythonArmPath}"
-                buildPython(winPythonArmPath)
-            }
-        } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("mac")) {
-            buildPython("/usr/bin/python3")
-        }
-
-        version = "3.11"
-        pyc {
-            src = false
-        }
-    }
-}
-
-
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "androidx.appcompat:appcompat:1.7.0"
-    implementation "com.google.android.material:material:1.12.0"
-    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
+    def composeBom = platform('androidx.compose:compose-bom:2025.01.01')
+    implementation composeBom
+
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.activity:activity-compose:1.10.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'
+    implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation composeBom
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
-
-// ========== START USER PROVIDED CONTENT ==========
-

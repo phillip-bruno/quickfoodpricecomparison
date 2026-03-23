@@ -13,7 +13,7 @@
         <!-- https://developer.android.com/guide/topics/resources/runtime-changes#HandlingTheChange -->
         <activity
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:name="org.beeware.android.MainActivity"
+            android:name=".MainActivity"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
