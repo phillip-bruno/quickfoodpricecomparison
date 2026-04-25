@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversion.PriceConverter
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.ALL_CATEGORIES_LABEL
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.CONVERSION_UNITS
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.FoodDensityRepository
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.SELECTION_LIST
@@ -36,22 +35,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedUnitIndex = MutableStateFlow(0)
     val selectedUnitIndex: StateFlow<Int> = _selectedUnitIndex
 
-    private val _selectedCategory = MutableStateFlow(ALL_CATEGORIES_LABEL)
-    val selectedCategory: StateFlow<String> = _selectedCategory
+    private val _foodSearchQuery = MutableStateFlow("")
+    val foodSearchQuery: StateFlow<String> = _foodSearchQuery
+
+    private val _selectedFood = MutableStateFlow<FoodDensity?>(null)
+    val selectedFood: StateFlow<FoodDensity?> = _selectedFood
+
+    val foodSearchResults: StateFlow<List<FoodDensity>> = _foodSearchQuery
+        .combine(MutableStateFlow(allFoodItems)) { query, items ->
+            if (query.isBlank()) emptyList()
+            else {
+                val q = query.trim().lowercase()
+                items.filter { it.foodName.lowercase().contains(q) || it.category.lowercase().contains(q) }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _comment = MutableStateFlow("")
     val comment: StateFlow<String> = _comment
-
-    // Filtered food items based on category
-    val filteredFoodItems: StateFlow<List<FoodDensity>> = _selectedCategory
-        .combine(MutableStateFlow(allFoodItems)) { category, items ->
-            if (category == ALL_CATEGORIES_LABEL) items
-            else items.filter { it.category == category }
-        }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, allFoodItems)
-
-    private val _selectedFoodIndex = MutableStateFlow(0)
-    val selectedFoodIndex: StateFlow<Int> = _selectedFoodIndex
 
     // Results
     private val _results = MutableStateFlow<Map<String, Double>>(emptyMap())
@@ -88,14 +89,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _selectedUnitIndex.value = index
     }
 
-    fun onCategoryChanged(category: String) {
-        _selectedCategory.value = category
-        _selectedFoodIndex.value = 0
+    fun onFoodSearchQueryChanged(query: String) {
+        _foodSearchQuery.value = query
+        if (_selectedFood.value != null) _selectedFood.value = null
         updateFoodInfo()
     }
 
-    fun onFoodSelected(index: Int) {
-        _selectedFoodIndex.value = index
+    fun onFoodItemDirectlySelected(food: FoodDensity) {
+        _selectedFood.value = food
+        _foodSearchQuery.value = food.foodName
         updateFoodInfo()
     }
 
@@ -103,11 +105,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _comment.value = value
     }
 
-    fun getSelectedFood(): FoodDensity? {
-        val items = filteredFoodItems.value
-        val idx = _selectedFoodIndex.value
-        return items.getOrNull(idx)
-    }
+    fun getSelectedFood(): FoodDensity? = _selectedFood.value
 
     private fun updateFoodInfo() {
         val food = getSelectedFood()
@@ -165,8 +163,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun resetInput() {
         _price.value = "1"
         _selectedUnitIndex.value = 0
-        _selectedCategory.value = ALL_CATEGORIES_LABEL
-        _selectedFoodIndex.value = 0
+        _foodSearchQuery.value = ""
+        _selectedFood.value = null
         _comment.value = ""
         _results.value = emptyMap()
         _pricePerUnit.value = ""
@@ -187,10 +185,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val unitIndex = SELECTION_LIST.indexOfFirst { it.name == entry.unitSelection }
         if (unitIndex >= 0) _selectedUnitIndex.value = unitIndex
 
-        // Reset category to show all items
-        _selectedCategory.value = ALL_CATEGORIES_LABEL
-        val foodIndex = allFoodItems.indexOfFirst { it.foodName == entry.densitySelection }
-        if (foodIndex >= 0) _selectedFoodIndex.value = foodIndex
+        val food = allFoodItems.firstOrNull { it.foodName == entry.densitySelection }
+        _selectedFood.value = food
+        _foodSearchQuery.value = food?.foodName ?: ""
 
         _comment.value = entry.comment ?: ""
         updateFoodInfo()
