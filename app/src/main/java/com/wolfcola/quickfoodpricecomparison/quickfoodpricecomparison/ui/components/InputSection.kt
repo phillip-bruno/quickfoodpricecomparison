@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.DropdownMenuItem
@@ -162,8 +162,12 @@ fun FoodSearchField(viewModel: MainViewModel) {
                         expanded = true,
                         onDismissRequest = {}
                     ) {
-                        LazyColumn(modifier = Modifier.heightIn(max = 240.dp)) {
-                            items(results, key = { it.foodName }) { food ->
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = 240.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            results.forEach { food ->
                                 DropdownMenuItem(
                                     text = {
                                         Column {
