@@ -5,13 +5,21 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
@@ -24,11 +32,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.ALL_CATEGORIES_LABEL
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.SELECTION_LIST
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.ui.theme.LocalExtendedColors
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel.MainViewModel
@@ -39,9 +48,6 @@ fun InputSection(viewModel: MainViewModel) {
     val currency by viewModel.currency.collectAsState()
     val price by viewModel.price.collectAsState()
     val selectedUnitIndex by viewModel.selectedUnitIndex.collectAsState()
-    val selectedCategory by viewModel.selectedCategory.collectAsState()
-    val filteredFoods by viewModel.filteredFoodItems.collectAsState()
-    val selectedFoodIndex by viewModel.selectedFoodIndex.collectAsState()
     val comment by viewModel.comment.collectAsState()
     val foodInfo by viewModel.foodInfo.collectAsState()
 
@@ -84,24 +90,8 @@ fun InputSection(viewModel: MainViewModel) {
             onSelected = { viewModel.onUnitSelected(it) }
         )
 
-        // Category filter dropdown
-        DropdownSelector(
-            label = "Category",
-            items = listOf(ALL_CATEGORIES_LABEL) + viewModel.categories,
-            selectedIndex = (listOf(ALL_CATEGORIES_LABEL) + viewModel.categories).indexOf(selectedCategory).coerceAtLeast(0),
-            onSelected = { idx ->
-                val cats = listOf(ALL_CATEGORIES_LABEL) + viewModel.categories
-                viewModel.onCategoryChanged(cats[idx])
-            }
-        )
-
-        // Food item dropdown
-        DropdownSelector(
-            label = "Food Item",
-            items = filteredFoods.map { it.foodName },
-            selectedIndex = selectedFoodIndex,
-            onSelected = { viewModel.onFoodSelected(it) }
-        )
+        // Food search field (replaces Category + Food Item dropdowns)
+        FoodSearchField(viewModel)
 
         // Food info subtitle
         if (foodInfo.isNotEmpty()) {
@@ -121,6 +111,98 @@ fun InputSection(viewModel: MainViewModel) {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FoodSearchField(viewModel: MainViewModel) {
+    val query by viewModel.foodSearchQuery.collectAsState()
+    val results by viewModel.foodSearchResults.collectAsState()
+    val selectedFood by viewModel.selectedFood.collectAsState()
+    val focusManager = LocalFocusManager.current
+
+    val expanded = query.isNotBlank() && results.isNotEmpty() && selectedFood == null
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text("Food:", style = MaterialTheme.typography.bodyMedium)
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = {},
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { viewModel.onFoodSearchQueryChanged(it) },
+                    label = { Text("Search food or category") },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = {
+                                viewModel.onFoodSearchQueryChanged("")
+                                focusManager.clearFocus()
+                            }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryEditable)
+                        .fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                )
+                if (expanded) {
+                    ExposedDropdownMenu(
+                        expanded = true,
+                        onDismissRequest = {}
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = 240.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            results.forEach { food ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                text = food.foodName,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            Text(
+                                                text = food.category,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = LocalExtendedColors.current.foodInfo
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.onFoodItemDirectlySelected(food)
+                                        focusManager.clearFocus()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (query.isNotBlank() && results.isEmpty() && selectedFood == null) {
+            Text(
+                text = "No matches",
+                fontSize = 12.sp,
+                fontStyle = FontStyle.Italic,
+                color = LocalExtendedColors.current.foodInfo,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            )
+        }
     }
 }
 
