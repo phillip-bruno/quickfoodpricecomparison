@@ -5,12 +5,12 @@ import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.Hist
 import org.json.JSONArray
 import java.io.File
 
-class HistoryManager(private val context: Context) {
+class HistoryManager(private val context: Context) : HistoryStore {
 
     private val historyFile: File
         get() = File(context.filesDir, "conversion_history.json")
 
-    fun loadHistory(): List<HistoryEntry> {
+    override fun loadHistory(): List<HistoryEntry> {
         val file = historyFile
         if (!file.exists()) return emptyList()
         return try {
@@ -20,19 +20,19 @@ class HistoryManager(private val context: Context) {
         }
     }
 
-    fun saveHistory(entries: List<HistoryEntry>) {
+    override fun saveHistory(entries: List<HistoryEntry>) {
         val deduped = deduplicateEntries(entries)
         val array = JSONArray()
         deduped.forEach { array.put(it.toJson()) }
         historyFile.writeText(array.toString())
     }
 
-    fun clearHistory() {
+    override fun clearHistory() {
         val file = historyFile
         if (file.exists()) file.delete()
     }
 
-    fun historyToBytes(entries: List<HistoryEntry>): ByteArray {
+    override fun historyToBytes(entries: List<HistoryEntry>): ByteArray {
         val deduped = deduplicateEntries(entries)
         val array = JSONArray()
         deduped.forEach { array.put(it.toJson()) }

@@ -8,53 +8,54 @@ import org.junit.Test
 class ConversionUnitTest {
 
     @Test
-    fun `key for kg 1 is kg_1`() {
-        val unit = ConversionUnit("kg", 1.0, UnitCategory.METRIC_MASS)
-        assertEquals("kg_1", unit.key)
+    fun `equal symbol and value are treated as the same unit`() {
+        assertEquals(ConversionUnit(UnitSymbol.KG, 1.0), ConversionUnit(UnitSymbol.KG, 1.0))
+        assertFalse(ConversionUnit(UnitSymbol.KG, 1.0) == ConversionUnit(UnitSymbol.G, 1.0))
+        assertFalse(ConversionUnit(UnitSymbol.G, 500.0) == ConversionUnit(UnitSymbol.G, 100.0))
     }
 
     @Test
-    fun `key for g 500 is g_500`() {
-        val unit = ConversionUnit("g", 500.0, UnitCategory.METRIC_MASS)
-        assertEquals("g_500", unit.key)
+    fun `displayLabel for g 500 is Price per 500 gram`() {
+        val unit = ConversionUnit(UnitSymbol.G, 500.0)
+        assertEquals("Price per 500 gram:", unit.displayLabel())
     }
 
     @Test
-    fun `key for gallon half is gallon_half`() {
-        val unit = ConversionUnit("gallon", 0.5, UnitCategory.IMPERIAL_VOLUME)
-        assertEquals("gallon_half", unit.key)
+    fun `displayLabel for gallon half is Price per 0_5 gallon`() {
+        val unit = ConversionUnit(UnitSymbol.GALLON, 0.5)
+        assertEquals("Price per 0.5 gallon:", unit.displayLabel())
     }
 
     @Test
-    fun `key for fluid_ounce is fluidounce_1`() {
-        val unit = ConversionUnit("fluid_ounce", 1.0, UnitCategory.IMPERIAL_VOLUME)
-        assertEquals("fluidounce_1", unit.key)
+    fun `displayLabel for fluid_ounce uses its display name`() {
+        val unit = ConversionUnit(UnitSymbol.FLUID_OUNCE, 1.0)
+        assertEquals("Price per 1 fluid ounce:", unit.displayLabel())
     }
 
     @Test
     fun `isMass true for metric mass`() {
-        val unit = ConversionUnit("kg", 1.0, UnitCategory.METRIC_MASS)
+        val unit = ConversionUnit(UnitSymbol.KG, 1.0)
         assertTrue(unit.isMass)
         assertFalse(unit.isVolume)
     }
 
     @Test
     fun `isMass true for imperial mass`() {
-        val unit = ConversionUnit("lbs", 1.0, UnitCategory.IMPERIAL_MASS)
+        val unit = ConversionUnit(UnitSymbol.LBS, 1.0)
         assertTrue(unit.isMass)
         assertFalse(unit.isVolume)
     }
 
     @Test
     fun `isVolume true for metric volume`() {
-        val unit = ConversionUnit("l", 1.0, UnitCategory.METRIC_VOLUME)
+        val unit = ConversionUnit(UnitSymbol.L, 1.0)
         assertFalse(unit.isMass)
         assertTrue(unit.isVolume)
     }
 
     @Test
     fun `isVolume true for imperial volume`() {
-        val unit = ConversionUnit("gallon", 1.0, UnitCategory.IMPERIAL_VOLUME)
+        val unit = ConversionUnit(UnitSymbol.GALLON, 1.0)
         assertFalse(unit.isMass)
         assertTrue(unit.isVolume)
     }

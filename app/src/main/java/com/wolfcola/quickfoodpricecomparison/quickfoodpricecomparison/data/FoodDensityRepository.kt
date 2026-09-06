@@ -6,9 +6,9 @@ import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
 
-class FoodDensityRepository(private val context: Context) {
+class FoodDensityRepository(private val context: Context) : FoodDensitySource {
 
-    fun loadFoodDensities(): List<FoodDensity> {
+    override fun loadFoodDensities(): List<FoodDensity> {
         return parseCsv(context.assets.open("food_density.csv"))
     }
 

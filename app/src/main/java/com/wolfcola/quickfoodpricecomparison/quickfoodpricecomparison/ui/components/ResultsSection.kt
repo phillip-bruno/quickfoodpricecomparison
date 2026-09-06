@@ -57,7 +57,7 @@ fun ResultsSection(viewModel: MainViewModel) {
 
         Column(modifier = Modifier.padding(vertical = 4.dp)) {
             unitsForCategory.forEach { unit ->
-                val value = results[unit.key]
+                val value = results[unit]
                 if (value != null) {
                     ResultRow(
                         label = unit.displayLabel(),

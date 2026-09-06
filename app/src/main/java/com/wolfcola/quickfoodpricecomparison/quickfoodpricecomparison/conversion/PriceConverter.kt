@@ -1,10 +1,12 @@
 package com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversion
 
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.UnitConversionFactors
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.ConversionUnit
 import kotlin.math.roundToLong
 
 object PriceConverter {
+
+    /** Rounds to 5 decimal places, the precision used throughout price conversions. */
+    fun round5(value: Double): Double = (value * 100000.0).roundToLong() / 100000.0
 
     fun convertPriceForUnit(
         price: Double,
@@ -13,16 +15,12 @@ object PriceConverter {
         densityGPerMl: Double
     ): Double {
         val result = if (target.isMass) {
-            val gramsPerTargetUnit = UnitConversionFactors.gramsPerUnit[target.unit]
-                ?: throw IllegalArgumentException("Unknown mass unit: ${target.unit}")
-            price / (sourceMassInGrams / gramsPerTargetUnit) * target.value
+            price / (sourceMassInGrams / target.symbol.baseAmount) * target.value
         } else {
-            val mlPerTargetUnit = UnitConversionFactors.mlPerUnit[target.unit]
-                ?: throw IllegalArgumentException("Unknown volume unit: ${target.unit}")
-            val sourceVolumeInTargetUnits = (sourceMassInGrams / densityGPerMl) / mlPerTargetUnit
+            val sourceVolumeInTargetUnits = (sourceMassInGrams / densityGPerMl) / target.symbol.baseAmount
             price / sourceVolumeInTargetUnits * target.value
         }
-        return (result * 100000.0).roundToLong() / 100000.0
+        return round5(result)
     }
 
     fun convertAllPrices(
@@ -30,12 +28,12 @@ object PriceConverter {
         sourceMassInGrams: Double,
         densityGPerMl: Double,
         units: List<ConversionUnit>
-    ): Map<String, Double> {
+    ): Map<ConversionUnit, Double> {
         require(price >= 0) { "Price must be non-negative" }
         require(densityGPerMl > 0) { "Density must be positive" }
 
-        return units.associate { unit ->
-            unit.key to convertPriceForUnit(price, sourceMassInGrams, unit, densityGPerMl)
+        return units.associateWith { unit ->
+            convertPriceForUnit(price, sourceMassInGrams, unit, densityGPerMl)
         }
     }
 }

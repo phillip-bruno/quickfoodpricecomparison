@@ -1,29 +1,21 @@
 package com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model
 
+/**
+ * One "target unit" a price can be converted into, e.g. "price per 500 grams".
+ *
+ * As a data class, (symbol, value) equality/hashCode makes ConversionUnit itself a safe,
+ * unique map key — no separate derived string key is needed to identify one.
+ */
 data class ConversionUnit(
-    val unit: String,
-    val value: Double,
-    val category: UnitCategory
+    val symbol: UnitSymbol,
+    val value: Double
 ) {
-    val key: String
-        get() {
-            val valStr = if (value == 0.5) "half" else value.toInt().toString()
-            val unitStr = if (unit == "fluid_ounce") "fluidounce" else unit
-            return "${unitStr}_$valStr"
-        }
-
-    val isMass: Boolean get() = category.isMass
-    val isVolume: Boolean get() = category.isVolume
+    val category: UnitCategory get() = symbol.category
+    val isMass: Boolean get() = symbol.isMass
+    val isVolume: Boolean get() = symbol.isVolume
 
     fun displayLabel(): String {
-        val unitNames = mapOf(
-            "kg" to "kilogram", "g" to "gram", "mg" to "milligram",
-            "lbs" to "pound", "oz" to "ounce", "l" to "liter",
-            "ml" to "milliliter", "gallon" to "gallon", "quart" to "quart",
-            "pint" to "pint", "fluid_ounce" to "fluid_ounce", "cup" to "cup"
-        )
-        val name = unitNames[unit] ?: unit
         val valueStr = if (value == 0.5) "0.5" else value.toInt().toString()
-        return "Price per $valueStr $name:"
+        return "Price per $valueStr ${symbol.displayName}:"
     }
 }

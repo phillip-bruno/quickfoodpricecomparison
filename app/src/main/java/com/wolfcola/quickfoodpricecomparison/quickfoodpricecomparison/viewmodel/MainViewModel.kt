@@ -6,20 +6,28 @@ import androidx.lifecycle.viewModelScope
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversion.PriceConverter
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.CONVERSION_UNITS
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.FoodDensityRepository
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.FoodDensitySource
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.SELECTION_LIST
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.ConversionUnit
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.FoodDensity
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.HistoryEntry
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryManager
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository = FoodDensityRepository(application)
-    private val historyManager = HistoryManager(application)
+/**
+ * repository/historyManager default to the real, Context-backed implementations so existing
+ * call sites (viewModel() in Compose) are unaffected; tests can inject fakes instead.
+ */
+class MainViewModel(
+    application: Application,
+    private val repository: FoodDensitySource = FoodDensityRepository(application),
+    private val historyManager: HistoryStore = HistoryManager(application)
+) : AndroidViewModel(application) {
 
     // Data
     val allFoodItems: List<FoodDensity> = repository.loadFoodDensities()
@@ -55,8 +63,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val comment: StateFlow<String> = _comment
 
     // Results
-    private val _results = MutableStateFlow<Map<String, Double>>(emptyMap())
-    val results: StateFlow<Map<String, Double>> = _results
+    private val _results = MutableStateFlow<Map<ConversionUnit, Double>>(emptyMap())
+    val results: StateFlow<Map<ConversionUnit, Double>> = _results
 
     private val _pricePerUnit = MutableStateFlow("")
     val pricePerUnit: StateFlow<String> = _pricePerUnit
@@ -135,7 +143,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             densityGPerMl = food.gMl,
             units = CONVERSION_UNITS
         )
-        val ppu = (priceValue / selectionItem.massInGrams * 100000.0).toLong() / 100000.0
+        val ppu = PriceConverter.round5(priceValue / selectionItem.massInGrams)
         _pricePerUnit.value = "$currency$ppu"
         _results.value = results
         _showClearButton.value = true

@@ -2,7 +2,7 @@ package com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversio
 
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.CONVERSION_UNITS
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.ConversionUnit
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.UnitCategory
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.UnitSymbol
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -17,7 +17,7 @@ class PriceConverterTest {
             densityGPerMl = 1.0,
             units = CONVERSION_UNITS
         )
-        assertEquals(10.0, results["kg_1"]!!, 0.00001)
+        assertEquals(10.0, results[ConversionUnit(UnitSymbol.KG, 1.0)]!!, 0.00001)
     }
 
     @Test
@@ -30,7 +30,7 @@ class PriceConverterTest {
             densityGPerMl = 1.0,
             units = CONVERSION_UNITS
         )
-        assertEquals(1.0, results["g_100"]!!, 0.00001)
+        assertEquals(1.0, results[ConversionUnit(UnitSymbol.G, 100.0)]!!, 0.00001)
     }
 
     @Test
@@ -44,7 +44,7 @@ class PriceConverterTest {
             densityGPerMl = 1.0,
             units = CONVERSION_UNITS
         )
-        assertEquals(10.0, results["l_1"]!!, 0.00001)
+        assertEquals(10.0, results[ConversionUnit(UnitSymbol.L, 1.0)]!!, 0.00001)
     }
 
     @Test
@@ -57,7 +57,7 @@ class PriceConverterTest {
             densityGPerMl = 0.789,
             units = CONVERSION_UNITS
         )
-        assertEquals(0.789, results["ml_100"]!!, 0.001)
+        assertEquals(0.789, results[ConversionUnit(UnitSymbol.ML, 100.0)]!!, 0.001)
     }
 
     @Test
@@ -93,7 +93,7 @@ class PriceConverterTest {
 
     @Test
     fun `single mass unit conversion`() {
-        val unit = ConversionUnit("oz", 1.0, UnitCategory.IMPERIAL_MASS)
+        val unit = ConversionUnit(UnitSymbol.OZ, 1.0)
         // price=10, source=1kg (1000g), target=1oz (28.3495g)
         // 10 / (1000/28.349523125) * 1 = 10 / 35.2739... = 0.28350 (rounded to 5 dp)
         val result = PriceConverter.convertPriceForUnit(10.0, 1000.0, unit, 1.0)
