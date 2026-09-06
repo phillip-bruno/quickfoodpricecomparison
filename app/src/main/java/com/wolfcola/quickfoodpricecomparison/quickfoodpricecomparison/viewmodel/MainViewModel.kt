@@ -20,14 +20,24 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * repository/historyManager default to the real, Context-backed implementations so existing
- * call sites (viewModel() in Compose) are unaffected; tests can inject fakes instead.
+ * The three-argument constructor lets tests inject fakes for the Context-backed dependencies.
+ *
+ * Production code goes through the single-argument constructor, which AndroidViewModelFactory
+ * looks up reflectively when Compose calls viewModel(). Kotlin default arguments do NOT emit
+ * that one-argument JVM constructor, so it must be declared explicitly or the app crashes at
+ * startup with NoSuchMethodException; MainViewModelTest guards this.
  */
 class MainViewModel(
     application: Application,
-    private val repository: FoodDensitySource = FoodDensityRepository(application),
-    private val historyManager: HistoryStore = HistoryManager(application)
+    private val repository: FoodDensitySource,
+    private val historyManager: HistoryStore
 ) : AndroidViewModel(application) {
+
+    constructor(application: Application) : this(
+        application,
+        FoodDensityRepository(application),
+        HistoryManager(application)
+    )
 
     // Data
     val allFoodItems: List<FoodDensity> = repository.loadFoodDensities()

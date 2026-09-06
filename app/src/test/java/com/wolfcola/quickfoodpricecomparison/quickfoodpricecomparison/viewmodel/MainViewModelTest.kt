@@ -7,6 +7,7 @@ import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.Hist
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,6 +59,14 @@ class MainViewModelTest {
         repository = FakeFoodDensitySource(items),
         historyManager = history
     )
+
+    @Test
+    fun `exposes the single-argument constructor AndroidViewModelFactory looks up`() {
+        // Exactly the lookup ViewModelProvider.AndroidViewModelFactory performs before
+        // instantiating the ViewModel. Kotlin default arguments do not emit this constructor,
+        // so without an explicit one the app crashes at startup with NoSuchMethodException.
+        assertNotNull(MainViewModel::class.java.getConstructor(Application::class.java))
+    }
 
     @Test
     fun `performConversion populates results and price per unit`() {
