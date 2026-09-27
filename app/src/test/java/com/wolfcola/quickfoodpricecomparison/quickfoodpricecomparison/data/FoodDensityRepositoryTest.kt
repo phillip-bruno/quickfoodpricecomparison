@@ -1,6 +1,5 @@
 package com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data
 
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.FoodDensity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -52,18 +51,6 @@ class FoodDensityRepositoryTest {
         val stream = ByteArrayInputStream(csv.toByteArray(Charsets.UTF_8))
         val items = FoodDensityRepository.parseCsv(stream)
         assertEquals(2, items.size)
-    }
-
-    @Test
-    fun `getFoodCategories returns sorted unique categories`() {
-        val items = listOf(
-            FoodDensity("a", 1.0, category = "Dairy"),
-            FoodDensity("b", 1.0, category = "Beverages"),
-            FoodDensity("c", 1.0, category = "Dairy"),
-            FoodDensity("d", 1.0, category = ""),
-        )
-        val cats = FoodDensityRepository.getFoodCategories(items)
-        assertEquals(listOf("Beverages", "Dairy"), cats)
     }
 
     @Test

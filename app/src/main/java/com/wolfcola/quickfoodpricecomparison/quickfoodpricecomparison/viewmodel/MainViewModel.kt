@@ -16,7 +16,7 @@ import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistenc
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -41,7 +41,6 @@ class MainViewModel(
 
     // Data
     val allFoodItems: List<FoodDensity> = repository.loadFoodDensities()
-    val categories: List<String> = FoodDensityRepository.getFoodCategories(allFoodItems)
 
     // Input state
     private val _currency = MutableStateFlow("$")
@@ -60,11 +59,11 @@ class MainViewModel(
     val selectedFood: StateFlow<FoodDensity?> = _selectedFood
 
     val foodSearchResults: StateFlow<List<FoodDensity>> = _foodSearchQuery
-        .combine(MutableStateFlow(allFoodItems)) { query, items ->
+        .map { query ->
             if (query.isBlank()) emptyList()
             else {
                 val q = query.trim().lowercase()
-                items.filter { it.foodName.lowercase().contains(q) || it.category.lowercase().contains(q) }
+                allFoodItems.filter { it.foodName.lowercase().contains(q) || it.category.lowercase().contains(q) }
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -79,20 +78,21 @@ class MainViewModel(
     private val _pricePerUnit = MutableStateFlow("")
     val pricePerUnit: StateFlow<String> = _pricePerUnit
 
-    private val _showClearButton = MutableStateFlow(false)
-    val showClearButton: StateFlow<Boolean> = _showClearButton
+    val showClearButton: StateFlow<Boolean> = _results
+        .map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     // History
     private val _historyEntries = MutableStateFlow<List<HistoryEntry>>(emptyList())
     val historyEntries: StateFlow<List<HistoryEntry>> = _historyEntries
 
     // Food info
-    private val _foodInfo = MutableStateFlow("")
-    val foodInfo: StateFlow<String> = _foodInfo
+    val foodInfo: StateFlow<String> = _selectedFood
+        .map { food -> food?.let(::describeFood) ?: "" }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     init {
         _historyEntries.value = historyManager.loadHistory()
-        updateFoodInfo()
     }
 
     fun onCurrencyChanged(value: String) {
@@ -110,37 +110,28 @@ class MainViewModel(
     fun onFoodSearchQueryChanged(query: String) {
         _foodSearchQuery.value = query
         if (_selectedFood.value != null) _selectedFood.value = null
-        updateFoodInfo()
     }
 
     fun onFoodItemDirectlySelected(food: FoodDensity) {
         _selectedFood.value = food
         _foodSearchQuery.value = food.foodName
-        updateFoodInfo()
     }
 
     fun onCommentChanged(value: String) {
         _comment.value = value
     }
 
-    fun getSelectedFood(): FoodDensity? = _selectedFood.value
-
-    private fun updateFoodInfo() {
-        val food = getSelectedFood()
-        if (food != null) {
-            val parts = mutableListOf<String>()
-            if (food.category.isNotEmpty()) parts.add("Category: ${food.category}")
-            parts.add("Density: ${food.gMl} g/ml")
-            if (food.biblioId.isNotEmpty()) parts.add("Source: ${food.biblioId}")
-            _foodInfo.value = parts.joinToString(" | ")
-        } else {
-            _foodInfo.value = ""
-        }
+    private fun describeFood(food: FoodDensity): String {
+        val parts = mutableListOf<String>()
+        if (food.category.isNotEmpty()) parts.add("Category: ${food.category}")
+        parts.add("Density: ${food.gMl} g/ml")
+        if (food.biblioId.isNotEmpty()) parts.add("Source: ${food.biblioId}")
+        return parts.joinToString(" | ")
     }
 
     fun performConversion() {
         val priceValue = _price.value.toDoubleOrNull() ?: return
-        val food = getSelectedFood() ?: return
+        val food = _selectedFood.value ?: return
         val unitIndex = _selectedUnitIndex.value
         val selectionItem = SELECTION_LIST.getOrNull(unitIndex) ?: return
 
@@ -156,7 +147,6 @@ class MainViewModel(
         val ppu = PriceConverter.round5(priceValue / selectionItem.massInGrams)
         _pricePerUnit.value = "$currency$ppu"
         _results.value = results
-        _showClearButton.value = true
     }
 
     private fun saveCurrentToHistory(food: FoodDensity, unitName: String) {
@@ -186,8 +176,6 @@ class MainViewModel(
         _comment.value = ""
         _results.value = emptyMap()
         _pricePerUnit.value = ""
-        _showClearButton.value = false
-        updateFoodInfo()
     }
 
     fun clearHistory() {
@@ -208,7 +196,6 @@ class MainViewModel(
         _foodSearchQuery.value = food?.foodName ?: ""
 
         _comment.value = entry.comment ?: ""
-        updateFoodInfo()
         performConversion()
     }
 

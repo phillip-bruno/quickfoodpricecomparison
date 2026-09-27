@@ -1,74 +1,69 @@
 plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.plugin.compose'
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
-    namespace "com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison"
-    compileSdk 36
+    namespace = "com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison"
+    compileSdk = 36
 
     defaultConfig {
-        applicationId "com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison"
-        minSdk 26
-        targetSdk 36
-        versionCode 18
-        versionName "2.2.5"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        applicationId = "com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison"
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 18
+        versionName = "2.2.5"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
-        compose true
+        compose = true
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_21
-        targetCompatibility JavaVersion.VERSION_21
-    }
-
-    kotlinOptions {
-        jvmTarget = "21"
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     signingConfigs {
         release {
-            storeFile file(System.getenv("KEYSTORE_FILE") ?: "../keystore.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias System.getenv("KEY_ALIAS") ?: "quickfood-release"
-            keyPassword System.getenv("KEY_PASSWORD") ?: ""
+            storeFile = file(System.getenv("KEYSTORE_FILE") ?: "../keystore.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: "quickfood-release"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
+            minifyEnabled = true
+            shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig = signingConfigs.release
         }
     }
 }
 
+kotlin {
+    jvmToolchain(21)
+}
+
 dependencies {
-    def composeBom = platform('androidx.compose:compose-bom:2025.01.01')
-    implementation composeBom
+    implementation platform(libs.androidx.compose.bom)
 
-    implementation 'androidx.compose.ui:ui'
-    implementation 'androidx.compose.ui:ui-graphics'
-    implementation 'androidx.compose.ui:ui-tooling-preview'
-    implementation 'androidx.compose.material3:material3'
-    implementation 'androidx.activity:activity-compose:1.10.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7'
-    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'
-    implementation 'androidx.core:core-ktx:1.15.0'
-    implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.graphics
+    implementation libs.androidx.compose.ui.tooling.preview
+    implementation libs.androidx.compose.material3
+    implementation libs.androidx.activity.compose
+    implementation libs.androidx.lifecycle.viewmodel.compose
+    implementation libs.androidx.lifecycle.runtime.compose
+    implementation libs.androidx.core.ktx
+    implementation libs.material
 
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.json:json:20231013'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0'
-    androidTestImplementation composeBom
-    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
-    debugImplementation 'androidx.compose.ui:ui-tooling'
-    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+    testImplementation libs.junit
+    testImplementation libs.json
+    testImplementation libs.kotlinx.coroutines.test
+    debugImplementation libs.androidx.compose.ui.tooling
+    debugImplementation libs.androidx.compose.ui.test.manifest
 }

@@ -15,14 +15,6 @@ data class ExtendedColors(
     val emptyState: Color,
 )
 
-val LocalExtendedColors = staticCompositionLocalOf {
-    ExtendedColors(
-        inputBackground = InputBackgroundLight,
-        foodInfo = FoodInfoColorLight,
-        emptyState = EmptyStateColorLight,
-    )
-}
-
 private val LightColorScheme = lightColorScheme(
     primary = Primary,
     onPrimary = Color.White,
@@ -52,6 +44,8 @@ private val DarkExtendedColors = ExtendedColors(
     foodInfo = FoodInfoColorDark,
     emptyState = EmptyStateColorDark,
 )
+
+val LocalExtendedColors = staticCompositionLocalOf { LightExtendedColors }
 
 @Composable
 fun QuickFoodPriceComparisonTheme(

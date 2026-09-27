@@ -20,10 +20,14 @@ data class HistoryEntry(
 
     companion object {
         fun fromJson(obj: JSONObject): HistoryEntry = HistoryEntry(
-            unitSelection = if (obj.isNull("unit_selection")) null else obj.optString("unit_selection"),
-            unitValue = if (obj.isNull("unit_value")) null else obj.optString("unit_value"),
-            densitySelection = if (obj.isNull("density_selection")) null else obj.optString("density_selection"),
-            comment = if (obj.isNull("comment")) null else obj.optString("comment"),
+            unitSelection = obj.optStringOrNull("unit_selection"),
+            unitValue = obj.optStringOrNull("unit_value"),
+            densitySelection = obj.optStringOrNull("density_selection"),
+            comment = obj.optStringOrNull("comment"),
         )
     }
 }
+
+/** Missing keys and explicit JSON nulls both map to Kotlin null (optString alone returns ""/"null"). */
+private fun JSONObject.optStringOrNull(key: String): String? =
+    if (isNull(key)) null else optString(key)

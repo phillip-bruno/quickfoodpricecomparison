@@ -4,8 +4,6 @@ import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.Conv
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.SelectionItem
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.UnitSymbol
 
-const val ALL_CATEGORIES_LABEL = "All Categories"
-
 val SELECTION_LIST = listOf(
     SelectionItem("Price per kilogram", 1000.0),
     SelectionItem("Price per 900 grams", 900.0),
@@ -20,13 +18,13 @@ val SELECTION_LIST = listOf(
     SelectionItem("Price per 100 grams", 100.0),
     SelectionItem("Price per gram", 1.0),
     SelectionItem("Price per milligram", 0.001),
-    SelectionItem("Price per pound", 453.59237),
-    SelectionItem("Price per 12 oz", 12.0 * 28.349523125),
-    SelectionItem("Price per 8 oz", 8.0 * 28.349523125),
-    SelectionItem("Price per 6 oz", 6.0 * 28.349523125),
-    SelectionItem("Price per 4 oz", 4.0 * 28.349523125),
-    SelectionItem("Price per 2 oz", 2.0 * 28.349523125),
-    SelectionItem("Price per oz", 28.349523125),
+    SelectionItem("Price per pound", UnitSymbol.LBS.baseAmount),
+    SelectionItem("Price per 12 oz", 12.0 * UnitSymbol.OZ.baseAmount),
+    SelectionItem("Price per 8 oz", 8.0 * UnitSymbol.OZ.baseAmount),
+    SelectionItem("Price per 6 oz", 6.0 * UnitSymbol.OZ.baseAmount),
+    SelectionItem("Price per 4 oz", 4.0 * UnitSymbol.OZ.baseAmount),
+    SelectionItem("Price per 2 oz", 2.0 * UnitSymbol.OZ.baseAmount),
+    SelectionItem("Price per oz", UnitSymbol.OZ.baseAmount),
 )
 
 val CONVERSION_UNITS = listOf(

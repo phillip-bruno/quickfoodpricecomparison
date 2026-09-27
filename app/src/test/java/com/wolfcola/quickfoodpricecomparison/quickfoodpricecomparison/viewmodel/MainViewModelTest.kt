@@ -115,7 +115,7 @@ class MainViewModelTest {
         viewModel.resetInput()
 
         assertEquals("1", viewModel.price.value)
-        assertNull(viewModel.getSelectedFood())
+        assertNull(viewModel.selectedFood.value)
         assertTrue(viewModel.results.value.isEmpty())
         assertEquals(false, viewModel.showClearButton.value)
     }
@@ -147,7 +147,7 @@ class MainViewModelTest {
 
         viewModel.onFoodItemDirectlySelected(water)
 
-        assertEquals(water, viewModel.getSelectedFood())
+        assertEquals(water, viewModel.selectedFood.value)
         assertEquals("Water", viewModel.foodSearchQuery.value)
     }
 }

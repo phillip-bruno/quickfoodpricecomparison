@@ -80,11 +80,5 @@ class FoodDensityRepository(private val context: Context) : FoodDensitySource {
             fields.add(current.toString().trim())
             return fields
         }
-
-        fun getFoodCategories(items: List<FoodDensity>): List<String> {
-            return items.mapNotNull { it.category.takeIf { c -> c.isNotEmpty() } }
-                .distinct()
-                .sorted()
-        }
     }
 }

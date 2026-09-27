@@ -21,10 +21,7 @@ class HistoryManager(private val context: Context) : HistoryStore {
     }
 
     override fun saveHistory(entries: List<HistoryEntry>) {
-        val deduped = deduplicateEntries(entries)
-        val array = JSONArray()
-        deduped.forEach { array.put(it.toJson()) }
-        historyFile.writeText(array.toString())
+        historyFile.writeText(toJsonString(entries))
     }
 
     override fun clearHistory() {
@@ -32,11 +29,13 @@ class HistoryManager(private val context: Context) : HistoryStore {
         if (file.exists()) file.delete()
     }
 
-    override fun historyToBytes(entries: List<HistoryEntry>): ByteArray {
-        val deduped = deduplicateEntries(entries)
+    override fun historyToBytes(entries: List<HistoryEntry>): ByteArray =
+        toJsonString(entries).toByteArray(Charsets.UTF_8)
+
+    private fun toJsonString(entries: List<HistoryEntry>): String {
         val array = JSONArray()
-        deduped.forEach { array.put(it.toJson()) }
-        return array.toString().toByteArray(Charsets.UTF_8)
+        deduplicateEntries(entries).forEach { array.put(it.toJson()) }
+        return array.toString()
     }
 
     companion object {
