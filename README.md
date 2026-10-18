@@ -16,7 +16,7 @@ An Android app that instantly compares food prices per unit across 40+ metric an
 ### Prerequisites
 
 - JDK 21
-- Android SDK with compileSdk 35
+- Android SDK with compileSdk 37
 
 ### Debug Build
 
