@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,7 +42,7 @@ fun ResultsSection(viewModel: MainViewModel) {
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
 
-        TabRow(selectedTabIndex = selectedTab) {
+        PrimaryTabRow(selectedTabIndex = selectedTab) {
             TAB_CATEGORIES.forEachIndexed { index, (title, _) ->
                 Tab(
                     selected = selectedTab == index,
