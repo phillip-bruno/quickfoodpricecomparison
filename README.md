@@ -43,11 +43,12 @@ The signed AAB will be at `app/build/outputs/bundle/release/app-release.aab`.
 
 ### Release Build (CI/CD)
 
-The GitHub Actions workflow at `.github/workflows/release.yml` builds a signed release AAB automatically.
+The GitHub Actions workflow at `.github/workflows/android.yml` runs the unit tests and then builds a signed release APK and AAB automatically.
 
 It triggers on:
+- Pushing to `main` or opening a pull request against `main`
 - Pushing a version tag (e.g. `v2.0.0`)
-- Manual dispatch from the Actions tab
+- Manual dispatch from the Actions tab (runs the unit tests only)
 
 The workflow requires these repository secrets (Settings > Secrets and variables > Actions):
 
