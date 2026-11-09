@@ -2,6 +2,7 @@ package com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversion.PriceConverter
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversion.PriceInput
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.CONVERSION_UNITS
@@ -10,37 +11,63 @@ import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.FoodD
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.SELECTION_LIST
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.FoodDensity
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.HistoryEntry
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.HistoryRules
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.ContentResolverDocuments
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.DocumentAccess
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryCodec
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryManager
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
- * The three-argument constructor lets tests inject fakes for the Context-backed dependencies.
+ * The multi-argument constructor lets tests inject fakes for the Context-backed dependencies.
  *
  * Production code goes through the single-argument constructor, which AndroidViewModelFactory
  * looks up reflectively when Compose calls viewModel(). Kotlin default arguments do NOT emit
  * that one-argument JVM constructor, so it must be declared explicitly or the app crashes at
  * startup with NoSuchMethodException; MainViewModelTest guards this.
+ *
+ * All disk and document I/O happens in the injected dependencies on background dispatchers;
+ * state is only ever touched on the main thread.
  */
 class MainViewModel(
     application: Application,
     repository: FoodDensitySource,
-    private val historyManager: HistoryStore
+    private val historyStore: HistoryStore,
+    private val documents: DocumentAccess
 ) : AndroidViewModel(application) {
 
     constructor(application: Application) : this(
         application,
         FoodDensityRepository(application),
-        HistoryManager(application)
+        HistoryManager(application),
+        ContentResolverDocuments(application)
     )
 
-    private val allFoodItems: List<FoodDensity> = repository.loadFoodDensities()
+    private var allFoodItems: List<FoodDensity> = emptyList()
 
-    private val _uiState = MutableStateFlow(MainUiState(history = historyManager.loadHistory()))
+    private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            allFoodItems = repository.loadFoodDensities()
+            val history = historyStore.load()
+            // Published together, so history (and thus history clicks) only appears once foods
+            // are available. Re-run any search typed while loading.
+            _uiState.update {
+                it.copy(
+                    history = history,
+                    foodSearchResults = if (it.selectedFood == null) searchFoods(it.foodSearchQuery) else emptyList()
+                )
+            }
+        }
+    }
 
     fun onCurrencyChanged(value: String) = _uiState.update { it.copy(currency = value) }
 
@@ -57,6 +84,8 @@ class MainViewModel(
     fun onFoodItemDirectlySelected(food: FoodDensity) = _uiState.update {
         it.copy(selectedFood = food, foodSearchQuery = food.foodName, foodSearchResults = emptyList())
     }
+
+    fun onMessageShown() = _uiState.update { it.copy(message = null) }
 
     private fun searchFoods(query: String): List<FoodDensity> {
         val q = query.trim().lowercase()
@@ -90,28 +119,28 @@ class MainViewModel(
                 units = CONVERSION_UNITS
             )
         )
-        val history = HistoryManager.cleanupHistory(
+        val history = HistoryRules.record(
             state.history,
-            currentDensity = food.foodName,
-            currentUnit = selection.name,
-            currentValue = state.price
-        ) + HistoryEntry(
-            unitSelection = selection.name,
-            unitValue = state.price,
-            densitySelection = food.foodName,
-            comment = state.comment
+            HistoryEntry(
+                unitSelection = selection.name,
+                unitValue = state.price,
+                densitySelection = food.foodName,
+                comment = state.comment
+            )
         )
 
         _uiState.update { it.copy(result = result, priceError = null, history = history) }
-        historyManager.saveHistory(history)
+        persist(history)
     }
 
     /** Clears the inputs and results; the chosen currency and history are kept. */
     fun resetInput() = _uiState.update { MainUiState(currency = it.currency, history = it.history) }
 
     fun clearHistory() {
-        historyManager.clearHistory()
         _uiState.update { it.copy(history = emptyList()) }
+        viewModelScope.launch {
+            if (attempt { historyStore.clear() } == null) showMessage("Couldn't clear saved history")
+        }
     }
 
     fun onHistoryItemSelected(entry: HistoryEntry) {
@@ -133,16 +162,45 @@ class MainViewModel(
         performConversion()
     }
 
-    fun getHistoryBytes(): ByteArray = historyManager.historyToBytes(_uiState.value.history)
-
-    fun importHistory(bytes: ByteArray) {
-        try {
-            val imported = HistoryManager.parseJsonEntries(String(bytes, Charsets.UTF_8))
-            val merged = _uiState.value.history + imported
-            _uiState.update { it.copy(history = merged) }
-            historyManager.saveHistory(merged)
-        } catch (_: Exception) {
-            // Invalid import data
+    fun exportHistory(uri: String) {
+        val bytes = HistoryCodec.encode(_uiState.value.history).toByteArray(Charsets.UTF_8)
+        viewModelScope.launch {
+            val written = attempt { documents.write(uri, bytes) }
+            showMessage(if (written != null) "History exported" else "Couldn't export history")
         }
     }
+
+    fun importHistory(uri: String) {
+        viewModelScope.launch {
+            val imported = attempt { HistoryCodec.decode(String(documents.read(uri), Charsets.UTF_8)) }
+            if (imported == null) {
+                showMessage("Couldn't read that file as history")
+                return@launch
+            }
+            val before = _uiState.value.history
+            val merged = HistoryRules.merge(before, imported)
+            _uiState.update { it.copy(history = merged) }
+            persist(merged)
+            val added = merged.size - before.size
+            showMessage(if (added == 1) "Imported 1 new entry" else "Imported $added new entries")
+        }
+    }
+
+    private fun persist(history: List<HistoryEntry>) {
+        viewModelScope.launch {
+            if (attempt { historyStore.save(history) } == null) showMessage("Couldn't save history")
+        }
+    }
+
+    private fun showMessage(message: String) = _uiState.update { it.copy(message = message) }
+
+    /** Runs [block], turning any failure (but not cancellation) into null. */
+    private suspend fun <T> attempt(block: suspend () -> T): T? =
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
 }

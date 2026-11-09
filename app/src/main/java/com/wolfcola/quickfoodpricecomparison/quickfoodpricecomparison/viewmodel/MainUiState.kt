@@ -20,7 +20,9 @@ data class MainUiState(
     val selectedFood: FoodDensity? = null,
     val comment: String = "",
     val result: ConversionResult? = null,
-    val history: List<HistoryEntry> = emptyList()
+    val history: List<HistoryEntry> = emptyList(),
+    /** One-off feedback (e.g. import/export outcome), shown once then cleared via onMessageShown(). */
+    val message: String? = null
 ) {
     val showClearButton: Boolean get() = result != null
 

@@ -2,14 +2,16 @@ package com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data
 
 import android.content.Context
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.FoodDensity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
 
 class FoodDensityRepository(private val context: Context) : FoodDensitySource {
 
-    override fun loadFoodDensities(): List<FoodDensity> {
-        return parseCsv(context.assets.open("food_density.csv"))
+    override suspend fun loadFoodDensities(): List<FoodDensity> = withContext(Dispatchers.IO) {
+        parseCsv(context.assets.open("food_density.csv"))
     }
 
     companion object {

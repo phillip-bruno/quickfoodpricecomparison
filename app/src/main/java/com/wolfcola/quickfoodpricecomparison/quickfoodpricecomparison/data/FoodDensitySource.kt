@@ -7,5 +7,5 @@ import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.Food
  * supply an in-memory fake instead of a real FoodDensityRepository (which needs a Context).
  */
 interface FoodDensitySource {
-    fun loadFoodDensities(): List<FoodDensity>
+    suspend fun loadFoodDensities(): List<FoodDensity>
 }

@@ -4,6 +4,8 @@ import android.app.Application
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.FoodDensitySource
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.FoodDensity
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.HistoryEntry
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.DocumentAccess
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryCodec
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.Assert.assertEquals
@@ -13,9 +15,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 private class FakeFoodDensitySource(private val items: List<FoodDensity>) : FoodDensitySource {
-    override fun loadFoodDensities(): List<FoodDensity> = items
+    override suspend fun loadFoodDensities(): List<FoodDensity> = items
 }
 
 private class FakeHistoryStore(initial: List<HistoryEntry> = emptyList()) : HistoryStore {
@@ -24,19 +27,24 @@ private class FakeHistoryStore(initial: List<HistoryEntry> = emptyList()) : Hist
     var cleared = false
         private set
 
-    override fun loadHistory(): List<HistoryEntry> = saved
-    override fun saveHistory(entries: List<HistoryEntry>) {
+    override suspend fun load(): List<HistoryEntry> = saved
+    override suspend fun save(entries: List<HistoryEntry>) {
         saved = entries
     }
 
-    override fun clearHistory() {
+    override suspend fun clear() {
         cleared = true
         saved = emptyList()
     }
+}
 
-    override fun historyToBytes(entries: List<HistoryEntry>): ByteArray =
-        entries.joinToString(";") { "${it.densitySelection}:${it.unitSelection}:${it.unitValue}" }
-            .toByteArray(Charsets.UTF_8)
+private class FakeDocuments : DocumentAccess {
+    val files = mutableMapOf<String, ByteArray>()
+
+    override suspend fun read(uri: String): ByteArray = files[uri] ?: throw IOException("missing $uri")
+    override suspend fun write(uri: String, bytes: ByteArray) {
+        files[uri] = bytes
+    }
 }
 
 /**
@@ -54,11 +62,13 @@ class MainViewModelTest {
 
     private fun newViewModel(
         items: List<FoodDensity> = listOf(water, milk),
-        history: FakeHistoryStore = FakeHistoryStore()
+        history: FakeHistoryStore = FakeHistoryStore(),
+        documents: FakeDocuments = FakeDocuments()
     ) = MainViewModel(
         application = Application(),
         repository = FakeFoodDensitySource(items),
-        historyManager = history
+        historyStore = history,
+        documents = documents
     )
 
     @Test
@@ -197,5 +207,64 @@ class MainViewModelTest {
         assertEquals(water, state.selectedFood)
         assertEquals("Water", state.foodSearchQuery)
         assertTrue(state.foodSearchResults.isEmpty())
+    }
+
+    @Test
+    fun `history is loaded from the store on start`() {
+        val entry = HistoryEntry("Price per kilogram", "2", "Water", "")
+        val viewModel = newViewModel(history = FakeHistoryStore(initial = listOf(entry)))
+
+        assertEquals(listOf(entry), viewModel.uiState.value.history)
+    }
+
+    @Test
+    fun `export writes the current history as json`() {
+        val entry = HistoryEntry("Price per kilogram", "2", "Water", "")
+        val documents = FakeDocuments()
+        val viewModel = newViewModel(history = FakeHistoryStore(initial = listOf(entry)), documents = documents)
+
+        viewModel.exportHistory("content://out")
+
+        assertEquals(listOf(entry), HistoryCodec.decode(String(documents.files.getValue("content://out"))))
+        assertEquals("History exported", viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `import merges without duplicates, saves, and reports the count`() {
+        val existing = HistoryEntry("Price per kilogram", "2", "Water", "")
+        val fresh = HistoryEntry("Price per gram", "1", "Milk", "")
+        val history = FakeHistoryStore(initial = listOf(existing))
+        val documents = FakeDocuments().apply {
+            files["content://in"] = HistoryCodec.encode(listOf(existing, fresh)).toByteArray()
+        }
+        val viewModel = newViewModel(history = history, documents = documents)
+
+        viewModel.importHistory("content://in")
+
+        assertEquals(listOf(existing, fresh), viewModel.uiState.value.history)
+        assertEquals(listOf(existing, fresh), history.saved)
+        assertEquals("Imported 1 new entry", viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `importing an invalid file leaves history alone and reports an error`() {
+        val existing = HistoryEntry("Price per kilogram", "2", "Water", "")
+        val documents = FakeDocuments().apply { files["content://in"] = "not json".toByteArray() }
+        val viewModel = newViewModel(history = FakeHistoryStore(initial = listOf(existing)), documents = documents)
+
+        viewModel.importHistory("content://in")
+
+        assertEquals(listOf(existing), viewModel.uiState.value.history)
+        assertEquals("Couldn't read that file as history", viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `onMessageShown clears the message`() {
+        val viewModel = newViewModel()
+        viewModel.exportHistory("content://out")
+
+        viewModel.onMessageShown()
+
+        assertNull(viewModel.uiState.value.message)
     }
 }
