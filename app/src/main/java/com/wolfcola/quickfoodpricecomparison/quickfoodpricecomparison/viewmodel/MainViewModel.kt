@@ -2,22 +2,20 @@ package com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversion.PriceConverter
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversion.PriceInput
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.CONVERSION_UNITS
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.FoodDensityRepository
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.FoodDensitySource
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.SELECTION_LIST
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.ConversionUnit
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.FoodDensity
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.HistoryEntry
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryManager
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryStore
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * The three-argument constructor lets tests inject fakes for the Context-backed dependencies.
@@ -29,7 +27,7 @@ import kotlinx.coroutines.flow.stateIn
  */
 class MainViewModel(
     application: Application,
-    private val repository: FoodDensitySource,
+    repository: FoodDensitySource,
     private val historyManager: HistoryStore
 ) : AndroidViewModel(application) {
 
@@ -39,177 +37,110 @@ class MainViewModel(
         HistoryManager(application)
     )
 
-    // Data
-    val allFoodItems: List<FoodDensity> = repository.loadFoodDensities()
+    private val allFoodItems: List<FoodDensity> = repository.loadFoodDensities()
 
-    // Input state
-    private val _currency = MutableStateFlow("$")
-    val currency: StateFlow<String> = _currency
+    private val _uiState = MutableStateFlow(MainUiState(history = historyManager.loadHistory()))
+    val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
-    private val _price = MutableStateFlow("1")
-    val price: StateFlow<String> = _price
+    fun onCurrencyChanged(value: String) = _uiState.update { it.copy(currency = value) }
 
-    private val _selectedUnitIndex = MutableStateFlow(0)
-    val selectedUnitIndex: StateFlow<Int> = _selectedUnitIndex
+    fun onPriceChanged(value: String) = _uiState.update { it.copy(price = value, priceError = null) }
 
-    private val _foodSearchQuery = MutableStateFlow("")
-    val foodSearchQuery: StateFlow<String> = _foodSearchQuery
+    fun onUnitSelected(index: Int) = _uiState.update { it.copy(selectedUnitIndex = index) }
 
-    private val _selectedFood = MutableStateFlow<FoodDensity?>(null)
-    val selectedFood: StateFlow<FoodDensity?> = _selectedFood
+    fun onCommentChanged(value: String) = _uiState.update { it.copy(comment = value) }
 
-    val foodSearchResults: StateFlow<List<FoodDensity>> = _foodSearchQuery
-        .map { query ->
-            if (query.isBlank()) emptyList()
-            else {
-                val q = query.trim().lowercase()
-                allFoodItems.filter { it.foodName.lowercase().contains(q) || it.category.lowercase().contains(q) }
-            }
-        }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    private val _comment = MutableStateFlow("")
-    val comment: StateFlow<String> = _comment
-
-    // Results
-    private val _results = MutableStateFlow<Map<ConversionUnit, Double>>(emptyMap())
-    val results: StateFlow<Map<ConversionUnit, Double>> = _results
-
-    private val _pricePerUnit = MutableStateFlow("")
-    val pricePerUnit: StateFlow<String> = _pricePerUnit
-
-    val showClearButton: StateFlow<Boolean> = _results
-        .map { it.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
-
-    // History
-    private val _historyEntries = MutableStateFlow<List<HistoryEntry>>(emptyList())
-    val historyEntries: StateFlow<List<HistoryEntry>> = _historyEntries
-
-    // Food info
-    val foodInfo: StateFlow<String> = _selectedFood
-        .map { food -> food?.let(::describeFood) ?: "" }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
-
-    init {
-        _historyEntries.value = historyManager.loadHistory()
+    fun onFoodSearchQueryChanged(query: String) = _uiState.update {
+        it.copy(foodSearchQuery = query, foodSearchResults = searchFoods(query), selectedFood = null)
     }
 
-    fun onCurrencyChanged(value: String) {
-        _currency.value = value
+    fun onFoodItemDirectlySelected(food: FoodDensity) = _uiState.update {
+        it.copy(selectedFood = food, foodSearchQuery = food.foodName, foodSearchResults = emptyList())
     }
 
-    fun onPriceChanged(value: String) {
-        _price.value = value
+    private fun searchFoods(query: String): List<FoodDensity> {
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) return emptyList()
+        return allFoodItems.filter { it.foodName.lowercase().contains(q) || it.category.lowercase().contains(q) }
     }
 
-    fun onUnitSelected(index: Int) {
-        _selectedUnitIndex.value = index
-    }
-
-    fun onFoodSearchQueryChanged(query: String) {
-        _foodSearchQuery.value = query
-        if (_selectedFood.value != null) _selectedFood.value = null
-    }
-
-    fun onFoodItemDirectlySelected(food: FoodDensity) {
-        _selectedFood.value = food
-        _foodSearchQuery.value = food.foodName
-    }
-
-    fun onCommentChanged(value: String) {
-        _comment.value = value
-    }
-
-    private fun describeFood(food: FoodDensity): String {
-        val parts = mutableListOf<String>()
-        if (food.category.isNotEmpty()) parts.add("Category: ${food.category}")
-        parts.add("Density: ${food.gMl} g/ml")
-        if (food.biblioId.isNotEmpty()) parts.add("Source: ${food.biblioId}")
-        return parts.joinToString(" | ")
-    }
-
+    /**
+     * Validates first and only records history once a conversion has actually succeeded, so
+     * bad input (e.g. a negative price) can neither crash the converter nor end up in history.
+     */
     fun performConversion() {
-        val priceValue = _price.value.toDoubleOrNull() ?: return
-        val food = _selectedFood.value ?: return
-        val unitIndex = _selectedUnitIndex.value
-        val selectionItem = SELECTION_LIST.getOrNull(unitIndex) ?: return
+        val state = _uiState.value
+        val food = state.selectedFood ?: return
+        val selection = SELECTION_LIST.getOrNull(state.selectedUnitIndex) ?: return
 
-        saveCurrentToHistory(food, selectionItem.name)
+        val price = when (val input = PriceInput.parse(state.price)) {
+            is PriceInput.Invalid -> {
+                _uiState.update { it.copy(priceError = input.message) }
+                return
+            }
+            is PriceInput.Valid -> input.value
+        }
 
-        val currency = _currency.value
-        val results = PriceConverter.convertAllPrices(
-            price = priceValue,
-            sourceMassInGrams = selectionItem.massInGrams,
-            densityGPerMl = food.gMl,
-            units = CONVERSION_UNITS
-        )
-        val ppu = PriceConverter.round5(priceValue / selectionItem.massInGrams)
-        _pricePerUnit.value = "$currency$ppu"
-        _results.value = results
-    }
-
-    private fun saveCurrentToHistory(food: FoodDensity, unitName: String) {
-        val entries = HistoryManager.cleanupHistory(
-            _historyEntries.value,
-            currentDensity = food.foodName,
-            currentUnit = unitName,
-            currentValue = _price.value
-        ).toMutableList()
-        entries.add(
-            HistoryEntry(
-                unitSelection = unitName,
-                unitValue = _price.value,
-                densitySelection = food.foodName,
-                comment = _comment.value
+        val result = ConversionResult(
+            pricePerGram = PriceConverter.round5(price / selection.massInGrams),
+            prices = PriceConverter.convertAllPrices(
+                price = price,
+                sourceMassInGrams = selection.massInGrams,
+                densityGPerMl = food.gMl,
+                units = CONVERSION_UNITS
             )
         )
-        _historyEntries.value = entries
-        historyManager.saveHistory(entries)
+        val history = HistoryManager.cleanupHistory(
+            state.history,
+            currentDensity = food.foodName,
+            currentUnit = selection.name,
+            currentValue = state.price
+        ) + HistoryEntry(
+            unitSelection = selection.name,
+            unitValue = state.price,
+            densitySelection = food.foodName,
+            comment = state.comment
+        )
+
+        _uiState.update { it.copy(result = result, priceError = null, history = history) }
+        historyManager.saveHistory(history)
     }
 
-    fun resetInput() {
-        _price.value = "1"
-        _selectedUnitIndex.value = 0
-        _foodSearchQuery.value = ""
-        _selectedFood.value = null
-        _comment.value = ""
-        _results.value = emptyMap()
-        _pricePerUnit.value = ""
-    }
+    /** Clears the inputs and results; the chosen currency and history are kept. */
+    fun resetInput() = _uiState.update { MainUiState(currency = it.currency, history = it.history) }
 
     fun clearHistory() {
         historyManager.clearHistory()
-        _historyEntries.value = emptyList()
+        _uiState.update { it.copy(history = emptyList()) }
     }
 
     fun onHistoryItemSelected(entry: HistoryEntry) {
         if (entry.unitSelection == null) return
-
-        _price.value = entry.unitValue ?: "1"
-
-        val unitIndex = SELECTION_LIST.indexOfFirst { it.name == entry.unitSelection }
-        if (unitIndex >= 0) _selectedUnitIndex.value = unitIndex
-
         val food = allFoodItems.firstOrNull { it.foodName == entry.densitySelection }
-        _selectedFood.value = food
-        _foodSearchQuery.value = food?.foodName ?: ""
+        val unitIndex = SELECTION_LIST.indexOfFirst { it.name == entry.unitSelection }
 
-        _comment.value = entry.comment ?: ""
+        _uiState.update {
+            it.copy(
+                price = entry.unitValue ?: "1",
+                priceError = null,
+                selectedUnitIndex = if (unitIndex >= 0) unitIndex else it.selectedUnitIndex,
+                selectedFood = food,
+                foodSearchQuery = food?.foodName ?: "",
+                foodSearchResults = emptyList(),
+                comment = entry.comment ?: ""
+            )
+        }
         performConversion()
     }
 
-    fun getHistoryBytes(): ByteArray {
-        return historyManager.historyToBytes(_historyEntries.value)
-    }
+    fun getHistoryBytes(): ByteArray = historyManager.historyToBytes(_uiState.value.history)
 
     fun importHistory(bytes: ByteArray) {
         try {
             val imported = HistoryManager.parseJsonEntries(String(bytes, Charsets.UTF_8))
-            val current = _historyEntries.value.toMutableList()
-            current.addAll(imported)
-            _historyEntries.value = current
-            historyManager.saveHistory(current)
+            val merged = _uiState.value.history + imported
+            _uiState.update { it.copy(history = merged) }
+            historyManager.saveHistory(merged)
         } catch (_: Exception) {
             // Invalid import data
         }

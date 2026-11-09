@@ -31,7 +31,8 @@ class FoodDensityRepository(private val context: Context) : FoodDensitySource {
                     try {
                         val fields = parseCsvLine(line)
                         val gMl = fields[gMlIdx].toDoubleOrNull()
-                        if (gMl != null) {
+                        // Non-positive densities would make every volume conversion invalid.
+                        if (gMl != null && gMl > 0) {
                             val sgRaw = sgIdx?.let { fields.getOrNull(it) } ?: ""
                             results.add(
                                 FoodDensity(

@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,18 +38,21 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.SELECTION_LIST
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.FoodDensity
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.ui.theme.LocalExtendedColors
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel.MainViewModel
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel.MainUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InputSection(viewModel: MainViewModel) {
-    val currency by viewModel.currency.collectAsState()
-    val price by viewModel.price.collectAsState()
-    val selectedUnitIndex by viewModel.selectedUnitIndex.collectAsState()
-    val comment by viewModel.comment.collectAsState()
-    val foodInfo by viewModel.foodInfo.collectAsState()
-
+fun InputSection(
+    state: MainUiState,
+    onCurrencyChanged: (String) -> Unit,
+    onPriceChanged: (String) -> Unit,
+    onUnitSelected: (Int) -> Unit,
+    onFoodSearchQueryChanged: (String) -> Unit,
+    onFoodSelected: (FoodDensity) -> Unit,
+    onCommentChanged: (String) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -68,17 +70,25 @@ fun InputSection(viewModel: MainViewModel) {
         ) {
             Text("Cost:", style = MaterialTheme.typography.bodyMedium)
             OutlinedTextField(
-                value = currency,
-                onValueChange = { viewModel.onCurrencyChanged(it) },
+                value = state.currency,
+                onValueChange = onCurrencyChanged,
                 modifier = Modifier.width(60.dp),
                 singleLine = true
             )
             OutlinedTextField(
-                value = price,
-                onValueChange = { viewModel.onPriceChanged(it) },
+                value = state.price,
+                onValueChange = onPriceChanged,
                 modifier = Modifier.weight(1f),
                 singleLine = true,
+                isError = state.priceError != null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+        }
+        state.priceError?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
             )
         }
 
@@ -86,14 +96,21 @@ fun InputSection(viewModel: MainViewModel) {
         DropdownSelector(
             label = "Unit",
             items = SELECTION_LIST.map { it.name },
-            selectedIndex = selectedUnitIndex,
-            onSelected = { viewModel.onUnitSelected(it) }
+            selectedIndex = state.selectedUnitIndex,
+            onSelected = onUnitSelected
         )
 
         // Food search field (replaces Category + Food Item dropdowns)
-        FoodSearchField(viewModel)
+        FoodSearchField(
+            query = state.foodSearchQuery,
+            results = state.foodSearchResults,
+            hasSelection = state.selectedFood != null,
+            onQueryChanged = onFoodSearchQueryChanged,
+            onFoodSelected = onFoodSelected
+        )
 
         // Food info subtitle
+        val foodInfo = state.foodInfo
         if (foodInfo.isNotEmpty()) {
             Text(
                 text = foodInfo,
@@ -105,8 +122,8 @@ fun InputSection(viewModel: MainViewModel) {
 
         // Comment
         OutlinedTextField(
-            value = comment,
-            onValueChange = { viewModel.onCommentChanged(it) },
+            value = state.comment,
+            onValueChange = onCommentChanged,
             label = { Text("Comment") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -116,13 +133,16 @@ fun InputSection(viewModel: MainViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FoodSearchField(viewModel: MainViewModel) {
-    val query by viewModel.foodSearchQuery.collectAsState()
-    val results by viewModel.foodSearchResults.collectAsState()
-    val selectedFood by viewModel.selectedFood.collectAsState()
+fun FoodSearchField(
+    query: String,
+    results: List<FoodDensity>,
+    hasSelection: Boolean,
+    onQueryChanged: (String) -> Unit,
+    onFoodSelected: (FoodDensity) -> Unit
+) {
     val focusManager = LocalFocusManager.current
 
-    val expanded = query.isNotBlank() && results.isNotEmpty() && selectedFood == null
+    val expanded = query.isNotBlank() && results.isNotEmpty() && !hasSelection
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -138,12 +158,12 @@ fun FoodSearchField(viewModel: MainViewModel) {
             ) {
                 OutlinedTextField(
                     value = query,
-                    onValueChange = { viewModel.onFoodSearchQueryChanged(it) },
+                    onValueChange = onQueryChanged,
                     label = { Text("Search food or category") },
                     trailingIcon = {
                         if (query.isNotEmpty()) {
                             IconButton(onClick = {
-                                viewModel.onFoodSearchQueryChanged("")
+                                onQueryChanged("")
                                 focusManager.clearFocus()
                             }) {
                                 Icon(Icons.Default.Clear, contentDescription = "Clear")
@@ -183,7 +203,7 @@ fun FoodSearchField(viewModel: MainViewModel) {
                                         }
                                     },
                                     onClick = {
-                                        viewModel.onFoodItemDirectlySelected(food)
+                                        onFoodSelected(food)
                                         focusManager.clearFocus()
                                     }
                                 )
@@ -194,7 +214,7 @@ fun FoodSearchField(viewModel: MainViewModel) {
             }
         }
 
-        if (query.isNotBlank() && results.isEmpty() && selectedFood == null) {
+        if (query.isNotBlank() && results.isEmpty() && !hasSelection) {
             Text(
                 text = "No matches",
                 fontSize = 12.sp,

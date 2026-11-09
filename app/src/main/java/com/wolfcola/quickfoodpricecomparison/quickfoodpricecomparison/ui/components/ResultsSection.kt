@@ -8,16 +8,16 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.conversion.formatPrice
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.data.CONVERSION_UNITS
+import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.ConversionUnit
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.UnitCategory
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel.MainViewModel
 
 private val TAB_CATEGORIES = listOf(
     "Metric Mass" to UnitCategory.METRIC_MASS,
@@ -27,13 +27,8 @@ private val TAB_CATEGORIES = listOf(
 )
 
 @Composable
-fun ResultsSection(viewModel: MainViewModel) {
-    val results by viewModel.results.collectAsState()
-    val currency by viewModel.currency.collectAsState()
-
-    if (results.isEmpty()) return
-
-    var selectedTab by remember { mutableIntStateOf(0) }
+fun ResultsSection(currency: String, prices: Map<ConversionUnit, Double>) {
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -53,16 +48,10 @@ fun ResultsSection(viewModel: MainViewModel) {
         }
 
         val category = TAB_CATEGORIES[selectedTab].second
-        val unitsForCategory = CONVERSION_UNITS.filter { it.category == category }
-
         Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            unitsForCategory.forEach { unit ->
-                val value = results[unit]
-                if (value != null) {
-                    ResultRow(
-                        label = unit.displayLabel(),
-                        value = "$currency$value"
-                    )
+            CONVERSION_UNITS.filter { it.category == category }.forEach { unit ->
+                prices[unit]?.let { value ->
+                    ResultRow(label = unit.displayLabel(), value = formatPrice(currency, value))
                 }
             }
         }

@@ -7,6 +7,7 @@ import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.Hist
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.persistence.HistoryStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -76,9 +77,10 @@ class MainViewModelTest {
 
         viewModel.performConversion()
 
-        assertEquals("$0.01", viewModel.pricePerUnit.value)
-        assertTrue(viewModel.results.value.isNotEmpty())
-        assertTrue(viewModel.showClearButton.value)
+        val state = viewModel.uiState.value
+        assertEquals(0.01, state.result!!.pricePerGram, 0.0)
+        assertTrue(state.result!!.prices.isNotEmpty())
+        assertTrue(state.showClearButton)
     }
 
     @Test
@@ -88,8 +90,7 @@ class MainViewModelTest {
 
         viewModel.performConversion()
 
-        assertTrue(viewModel.results.value.isEmpty())
-        assertEquals("", viewModel.pricePerUnit.value)
+        assertNull(viewModel.uiState.value.result)
     }
 
     @Test
@@ -103,21 +104,66 @@ class MainViewModelTest {
 
         assertEquals(1, history.saved.size)
         assertEquals("Water", history.saved[0].densitySelection)
+        assertEquals(history.saved, viewModel.uiState.value.history)
     }
 
     @Test
-    fun `resetInput clears conversion state`() {
+    fun `invalid price sets an error instead of converting or saving history`() {
+        for (bad in listOf("-5", "", "abc", "NaN", "Infinity")) {
+            val history = FakeHistoryStore()
+            val viewModel = newViewModel(history = history)
+            viewModel.onFoodItemDirectlySelected(water)
+            viewModel.onPriceChanged(bad)
+
+            viewModel.performConversion()
+
+            val state = viewModel.uiState.value
+            assertNotNull("error for '$bad'", state.priceError)
+            assertNull("result for '$bad'", state.result)
+            assertTrue("history for '$bad'", history.saved.isEmpty())
+        }
+    }
+
+    @Test
+    fun `editing the price clears the error`() {
         val viewModel = newViewModel()
+        viewModel.onFoodItemDirectlySelected(water)
+        viewModel.onPriceChanged("-5")
+        viewModel.performConversion()
+
+        viewModel.onPriceChanged("5")
+
+        assertNull(viewModel.uiState.value.priceError)
+    }
+
+    @Test
+    fun `selecting a history entry with a negative price does not crash`() {
+        val bad = HistoryEntry("Price per kilogram", "-5", "Water", "")
+        val viewModel = newViewModel(history = FakeHistoryStore(initial = listOf(bad)))
+
+        viewModel.onHistoryItemSelected(bad)
+
+        assertNotNull(viewModel.uiState.value.priceError)
+        assertNull(viewModel.uiState.value.result)
+    }
+
+    @Test
+    fun `resetInput clears conversion state but keeps currency and history`() {
+        val viewModel = newViewModel()
+        viewModel.onCurrencyChanged("€")
         viewModel.onFoodItemDirectlySelected(water)
         viewModel.onPriceChanged("10")
         viewModel.performConversion()
 
         viewModel.resetInput()
 
-        assertEquals("1", viewModel.price.value)
-        assertNull(viewModel.selectedFood.value)
-        assertTrue(viewModel.results.value.isEmpty())
-        assertEquals(false, viewModel.showClearButton.value)
+        val state = viewModel.uiState.value
+        assertEquals("1", state.price)
+        assertEquals("€", state.currency)
+        assertNull(state.selectedFood)
+        assertNull(state.result)
+        assertFalse(state.showClearButton)
+        assertEquals(1, state.history.size)
     }
 
     @Test
@@ -128,7 +174,7 @@ class MainViewModelTest {
         viewModel.clearHistory()
 
         assertTrue(history.cleared)
-        assertTrue(viewModel.historyEntries.value.isEmpty())
+        assertTrue(viewModel.uiState.value.history.isEmpty())
     }
 
     @Test
@@ -137,7 +183,7 @@ class MainViewModelTest {
 
         viewModel.onFoodSearchQueryChanged("dairy")
 
-        assertEquals(listOf(milk), viewModel.foodSearchResults.value)
+        assertEquals(listOf(milk), viewModel.uiState.value.foodSearchResults)
     }
 
     @Test
@@ -147,7 +193,9 @@ class MainViewModelTest {
 
         viewModel.onFoodItemDirectlySelected(water)
 
-        assertEquals(water, viewModel.selectedFood.value)
-        assertEquals("Water", viewModel.foodSearchQuery.value)
+        val state = viewModel.uiState.value
+        assertEquals(water, state.selectedFood)
+        assertEquals("Water", state.foodSearchQuery)
+        assertTrue(state.foodSearchResults.isEmpty())
     }
 }

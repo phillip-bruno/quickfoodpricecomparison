@@ -10,20 +10,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.model.HistoryEntry
 import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.ui.theme.LocalExtendedColors
-import com.wolfcola.quickfoodpricecomparison.quickfoodpricecomparison.viewmodel.MainViewModel
 
 @Composable
-fun HistorySection(viewModel: MainViewModel) {
-    val entries by viewModel.historyEntries.collectAsState()
-
+fun HistorySection(entries: List<HistoryEntry>, onEntryClick: (HistoryEntry) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -41,7 +36,7 @@ fun HistorySection(viewModel: MainViewModel) {
         } else {
             Column(modifier = Modifier.padding(top = 4.dp)) {
                 entries.forEachIndexed { index, entry ->
-                    HistoryRow(entry = entry, onClick = { viewModel.onHistoryItemSelected(entry) })
+                    HistoryRow(entry = entry, onClick = { onEntryClick(entry) })
                     if (index < entries.lastIndex) {
                         HorizontalDivider()
                     }
